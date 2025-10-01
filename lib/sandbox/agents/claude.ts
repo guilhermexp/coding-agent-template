@@ -1,40 +1,39 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
-import { LogEntry } from '@/lib/db/schema'
+import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and collect logs
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: LogEntry[], logger?: TaskLogger) {
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
-  
+
   // Log to both local logs and database if logger is provided
-  logs.push(createCommandLog(redactedCommand))
+  await logger.command(redactedCommand)
   if (logger) {
     await logger.command(redactedCommand)
   }
-  
+
   const result = await runCommandInSandbox(sandbox, command, args)
-  
+
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
-    logs.push(createInfoLog(redactedOutput))
+    await logger.info(redactedOutput)
     if (logger) {
       await logger.info(redactedOutput)
     }
   }
-  
+
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
-    logs.push(createErrorLog(redactedError))
+    await logger.error(redactedError)
     if (logger) {
       await logger.error(redactedError)
     }
   }
-  
+
   // If result is null/undefined, create a fallback result
   if (!result) {
     const errorResult = {
@@ -42,48 +41,52 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       error: 'Command execution failed - no result returned',
       exitCode: -1,
       output: '',
-      command: redactedCommand
+      command: redactedCommand,
     }
-    logs.push(createErrorLog('Command execution failed - no result returned'))
+    await logger.error('Command execution failed - no result returned')
     if (logger) {
       await logger.error('Command execution failed - no result returned')
     }
     return errorResult
   }
-  
+
   return result
 }
 
-export async function installClaudeCLI(sandbox: Sandbox): Promise<{ success: boolean; logs: string[] }> {
-  const logs: string[] = []
-
+export async function installClaudeCLI(
+  sandbox: Sandbox,
+  logger: TaskLogger,
+  selectedModel?: string,
+): Promise<{ success: boolean }> {
   // Install Claude CLI
-  logs.push('Installing Claude CLI...')
+  await logger.info('Installing Claude CLI...')
   const claudeInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', '@anthropic-ai/claude-code'])
 
   if (claudeInstall.success) {
-    logs.push('Claude CLI installed successfully')
+    await logger.info('Claude CLI installed successfully')
 
     // Authenticate Claude CLI with API key
     if (process.env.ANTHROPIC_API_KEY) {
-      logs.push('Authenticating Claude CLI...')
+      await logger.info('Authenticating Claude CLI...')
 
       // Create Claude config directory (use $HOME instead of ~)
       await runCommandInSandbox(sandbox, 'mkdir', ['-p', '$HOME/.config/claude'])
 
       // Create config file directly using absolute path
+      // Use selectedModel if provided, otherwise fall back to default
+      const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
 {
   "api_key": "${process.env.ANTHROPIC_API_KEY}",
-  "default_model": "claude-3-5-sonnet-20241022"
+  "default_model": "${modelToUse}"
 }
 EOF`
       const configFileResult = await runCommandInSandbox(sandbox, 'sh', ['-c', configFileCmd])
 
       if (configFileResult.success) {
-        logs.push('Claude CLI config file created successfully')
+        await logger.info('Claude CLI config file created successfully')
       } else {
-        logs.push('Warning: Failed to create Claude CLI config file')
+        await logger.info('Warning: Failed to create Claude CLI config file')
       }
 
       // Verify authentication
@@ -92,69 +95,63 @@ EOF`
         `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY} claude --version`,
       ])
       if (verifyAuth.success) {
-        logs.push('Claude CLI authentication verified')
+        await logger.info('Claude CLI authentication verified')
       } else {
-        logs.push('Warning: Claude CLI authentication could not be verified')
+        await logger.info('Warning: Claude CLI authentication could not be verified')
       }
     } else {
-      logs.push('Warning: ANTHROPIC_API_KEY not found, Claude CLI may not work')
+      await logger.info('Warning: ANTHROPIC_API_KEY not found, Claude CLI may not work')
     }
 
-    return { success: true, logs }
+    return { success: true }
   } else {
-    logs.push('Failed to install Claude CLI')
-    return { success: false, logs }
+    await logger.info('Failed to install Claude CLI')
+    return { success: false }
   }
 }
 
-export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger): Promise<AgentExecutionResult> {
-  const logs: LogEntry[] = []
-  
+export async function executeClaudeInSandbox(
+  sandbox: Sandbox,
+  instruction: string,
+  logger: TaskLogger,
+  selectedModel?: string,
+): Promise<AgentExecutionResult> {
   try {
     // Executing Claude CLI with instruction
 
     // Check if Claude CLI is available and get version info
-    const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
-    
+    const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logger)
+
     if (cliCheck.success) {
       // Get Claude CLI version for debugging
-      await runAndLogCommand(sandbox, 'claude', ['--version'], logs, logger)
+      await runAndLogCommand(sandbox, 'claude', ['--version'], logger)
       // Also try to see what commands are available
-      await runAndLogCommand(sandbox, 'claude', ['--help'], logs, logger)
+      await runAndLogCommand(sandbox, 'claude', ['--help'], logger)
     }
 
     if (!cliCheck.success) {
       // Claude CLI not found, try to install it
       // Claude CLI not found, installing
-      const installResult = await installClaudeCLI(sandbox)
-      
+      const installResult = await installClaudeCLI(sandbox, logger, selectedModel)
+
       if (!installResult.success) {
-        // Convert installation logs to LogEntry format
-        const installLogs = installResult.logs.map(log => createInfoLog(log))
         return {
           success: false,
-          error: `Failed to install Claude CLI: ${installResult.logs.join(', ')}`,
+          error: 'Failed to install Claude CLI',
           cliName: 'claude',
           changesDetected: false,
-          logs: [...logs, ...installLogs],
         }
       }
-      
-      // Add installation logs to our logs (convert string logs to LogEntry)
-      installResult.logs.forEach(log => {
-        logs.push(createInfoLog(log))
-      })
       // Claude CLI installed successfully
-      
+
       // Verify installation worked
-      const verifyCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
+      const verifyCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logger)
       if (!verifyCheck.success) {
         return {
           success: false,
           error: 'Claude CLI installation completed but CLI still not found',
           cliName: 'claude',
           changesDetected: false,
-          logs,
         }
       }
     }
@@ -166,41 +163,41 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         error: 'ANTHROPIC_API_KEY environment variable is required but not found',
         cliName: 'claude',
         changesDetected: false,
-        logs,
       }
     }
 
     // Execute Claude CLI with proper environment and instruction
     const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-    
+
     // Log what we're trying to do
+    const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
     if (logger) {
-      await logger.info(`Attempting to execute Claude CLI with instruction: ${instruction.substring(0, 100)}...`)
+      await logger.info(
+        `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
+      )
     }
-    
+
     // Try multiple command formats to see what works
-    let fullCommand: string
-    
-    // First try: Simple direct command with permissions flag and verbose output
-    fullCommand = `${envPrefix} claude --dangerously-skip-permissions --verbose "${instruction}"`
-    
+    // First try: Simple direct command with permissions flag, model specification, and verbose output
+    const fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-skip-permissions --verbose "${instruction}"`
+
     if (logger) {
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
     }
 
     // Log the command we're about to execute (with redacted API key)
     const redactedCommand = fullCommand.replace(process.env.ANTHROPIC_API_KEY!, '[REDACTED]')
-    logs.push(createCommandLog(redactedCommand))
+    await logger.command(redactedCommand)
     if (logger) {
       await logger.command(redactedCommand)
     }
 
     const result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
-    
+
     // Check if result is valid before accessing properties
     if (!result) {
       const errorMsg = 'Claude CLI execution failed - no result returned'
-      logs.push(createErrorLog(errorMsg))
+      await logger.error(errorMsg)
       if (logger) {
         await logger.error(errorMsg)
       }
@@ -209,22 +206,21 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         error: errorMsg,
         cliName: 'claude',
         changesDetected: false,
-        logs,
       }
     }
-    
+
     // Log the output
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      logs.push(createInfoLog(redactedOutput))
+      await logger.info(redactedOutput)
       if (logger) {
         await logger.info(redactedOutput)
       }
     }
-    
+
     if (!result.success && result.error) {
       const redactedError = redactSensitiveInfo(result.error)
-      logs.push(createErrorLog(redactedError))
+      await logger.error(redactedError)
       if (logger) {
         await logger.error(redactedError)
       }
@@ -244,7 +240,7 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
     }
 
     // Check if any files were modified
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logs, logger)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
 
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
@@ -254,12 +250,12 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         if (logger) {
           await logger.info('No changes detected. Checking if files exist...')
         }
-        
+
         // Check if common files exist
-        const readmeCheck = await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logs, logger)
-        const fileListCheck = await runAndLogCommand(sandbox, 'ls', ['-la'], logs, logger)
+        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logger)
+        await runAndLogCommand(sandbox, 'ls', ['-la'], logger)
       }
-      
+
       return {
         success: true,
         output: `Claude CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
@@ -267,7 +263,6 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         cliName: 'claude',
         changesDetected: !!hasChanges,
         error: undefined,
-        logs,
       }
     } else {
       return {
@@ -276,16 +271,15 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         agentResponse: result.output,
         cliName: 'claude',
         changesDetected: !!hasChanges,
-        logs,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to execute Claude CLI in sandbox'
     return {
       success: false,
-      error: error.message || 'Failed to execute Claude CLI in sandbox',
+      error: errorMessage,
       cliName: 'claude',
       changesDetected: false,
-      logs,
     }
   }
 }

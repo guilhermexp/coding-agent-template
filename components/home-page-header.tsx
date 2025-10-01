@@ -1,14 +1,10 @@
 'use client'
 
 import { PageHeader } from '@/components/page-header'
+import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,17 +16,26 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { MoreHorizontal, RefreshCw, Trash2, ExternalLink } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
-export function HomePageHeader() {
-  const { toggleSidebar, isSidebarOpen, refreshTasks } = useTasks()
+interface HomePageHeaderProps {
+  selectedOwner: string
+  selectedRepo: string
+  onOwnerChange: (owner: string) => void
+  onRepoChange: (repo: string) => void
+}
+
+export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onRepoChange }: HomePageHeaderProps) {
+  const { toggleSidebar, refreshTasks } = useTasks()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
+  const [deleteStopped, setDeleteStopped] = useState(true)
 
   const handleRefreshRepos = async () => {
     setIsRefreshing(true)
@@ -42,7 +47,7 @@ export function HomePageHeader() {
           sessionStorage.removeItem(key)
         }
       })
-      
+
       // Reload the page to fetch fresh data
       window.location.reload()
     } catch (error) {
@@ -53,7 +58,7 @@ export function HomePageHeader() {
   }
 
   const handleDeleteTasks = async () => {
-    if (!deleteCompleted && !deleteFailed) {
+    if (!deleteCompleted && !deleteFailed && !deleteStopped) {
       toast.error('Please select at least one task type to delete')
       return
     }
@@ -63,6 +68,7 @@ export function HomePageHeader() {
       const actions = []
       if (deleteCompleted) actions.push('completed')
       if (deleteFailed) actions.push('failed')
+      if (deleteStopped) actions.push('stopped')
 
       const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
         method: 'DELETE',
@@ -95,17 +101,8 @@ export function HomePageHeader() {
         size="sm"
         className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
       >
-        <a
-          href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5"
-        >
-          <svg
-            viewBox="0 0 76 65"
-            className="h-3 w-3"
-            fill="currentColor"
-          >
+        <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+          <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
           Deploy to Vercel
@@ -133,15 +130,25 @@ export function HomePageHeader() {
     </div>
   )
 
+  const leftActions = (
+    <RepoSelector
+      selectedOwner={selectedOwner}
+      selectedRepo={selectedRepo}
+      onOwnerChange={onOwnerChange}
+      onRepoChange={onRepoChange}
+      size="sm"
+    />
+  )
+
   return (
     <>
       <PageHeader
         showMobileMenu={true}
         onToggleMobileMenu={toggleSidebar}
-        isMobileSidebarOpen={isSidebarOpen}
         actions={actions}
+        leftActions={leftActions}
       />
-      
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -153,32 +160,51 @@ export function HomePageHeader() {
           <div className="py-4">
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-completed" 
+                <Checkbox
+                  id="delete-completed"
                   checked={deleteCompleted}
-                  onCheckedChange={setDeleteCompleted}
+                  onCheckedChange={(checked) => setDeleteCompleted(checked === true)}
                 />
-                <label htmlFor="delete-completed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <label
+                  htmlFor="delete-completed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
                   Delete Completed Tasks
                 </label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-failed" 
+                <Checkbox
+                  id="delete-failed"
                   checked={deleteFailed}
-                  onCheckedChange={setDeleteFailed}
+                  onCheckedChange={(checked) => setDeleteFailed(checked === true)}
                 />
-                <label htmlFor="delete-failed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <label
+                  htmlFor="delete-failed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
                   Delete Failed Tasks
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-stopped"
+                  checked={deleteStopped}
+                  onCheckedChange={(checked) => setDeleteStopped(checked === true)}
+                />
+                <label
+                  htmlFor="delete-stopped"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Stopped Tasks
                 </label>
               </div>
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteTasks} 
-              disabled={isDeleting || (!deleteCompleted && !deleteFailed)}
+            <AlertDialogAction
+              onClick={handleDeleteTasks}
+              disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
               className="bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? 'Deleting...' : 'Delete Tasks'}

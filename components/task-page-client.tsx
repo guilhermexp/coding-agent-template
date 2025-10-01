@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
-import { Loader2 } from 'lucide-react'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 interface TaskPageClientProps {
   taskId: string
@@ -16,7 +16,7 @@ interface TaskPageClientProps {
 
 export function TaskPageClient({ taskId }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
-  const { toggleSidebar, isSidebarOpen } = useTasks()
+  const { toggleSidebar } = useTasks()
 
   if (isLoading) {
     return (
@@ -25,7 +25,6 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <PageHeader
             showMobileMenu={true}
             onToggleMobileMenu={toggleSidebar}
-            isMobileSidebarOpen={isSidebarOpen}
             actions={
               <div className="flex items-center gap-2">
                 {/* Deploy to Vercel Button */}
@@ -36,16 +35,12 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
                   className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
                 >
                   <a
-                    href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template"
+                    href={VERCEL_DEPLOY_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5"
                   >
-                    <svg
-                      viewBox="0 0 76 65"
-                      className="h-3 w-3"
-                      fill="currentColor"
-                    >
+                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
                       <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
                     </svg>
                     Deploy to Vercel
@@ -65,14 +60,12 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
               <div className="max-w-4xl mx-auto space-y-6">
                 {/* Task Info Skeleton - 339px height */}
                 <Card className="h-[339px]">
-                  <CardContent className="space-y-4">
-                  </CardContent>
+                  <CardContent className="space-y-4"></CardContent>
                 </Card>
 
                 {/* Logs Skeleton - 512px height */}
                 <Card className="h-[512px]">
-                  <CardContent>
-                  </CardContent>
+                  <CardContent></CardContent>
                 </Card>
               </div>
             </div>
@@ -89,9 +82,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <h2 className="text-lg font-semibold mb-2">Task Not Found</h2>
-              <p className="text-muted-foreground">
-                {error || 'The requested task could not be found.'}
-              </p>
+              <p className="text-muted-foreground">{error || 'The requested task could not be found.'}</p>
             </div>
           </div>
         </div>

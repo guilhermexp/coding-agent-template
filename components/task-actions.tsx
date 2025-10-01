@@ -18,8 +18,9 @@ import {
 import { MoreHorizontal, RotateCcw, Trash2, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { useTasks } from '@/components/app-layout'
-import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
+import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 
 interface TaskActionsProps {
   task: Task
@@ -29,36 +30,43 @@ const CODING_AGENTS = [
   { value: 'claude', label: 'Claude', icon: Claude },
   { value: 'codex', label: 'Codex', icon: Codex },
   { value: 'cursor', label: 'Cursor', icon: Cursor },
+  { value: 'gemini', label: 'Gemini', icon: Gemini },
   { value: 'opencode', label: 'opencode', icon: OpenCode },
 ] as const
 
 // Model options for each agent
 const AGENT_MODELS = {
   claude: [
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
   ],
   codex: [
     { value: 'openai/gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
   cursor: [
-    { value: 'cursor-small', label: 'Cursor Small' },
-    { value: 'cursor-medium', label: 'Cursor Medium' },
     { value: 'gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
+  gemini: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   opencode: [
     { value: 'gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
   ],
@@ -66,9 +74,10 @@ const AGENT_MODELS = {
 
 // Default models for each agent
 const DEFAULT_MODELS = {
-  claude: 'claude-sonnet-4-20250514',
+  claude: 'claude-sonnet-4-5-20250929',
   codex: 'openai/gpt-5',
-  cursor: 'cursor-small',
+  cursor: 'gpt-5',
+  gemini: 'gemini-2.5-pro',
   opencode: 'gpt-5',
 } as const
 
@@ -87,7 +96,9 @@ export function TaskActions({ task }: TaskActionsProps) {
     if (selectedAgent) {
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
       const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-      setSelectedModel(defaultModel)
+      if (defaultModel && agentModels) {
+        setSelectedModel(defaultModel)
+      }
     }
   }, [selectedAgent])
 
@@ -171,17 +182,8 @@ export function TaskActions({ task }: TaskActionsProps) {
           size="sm"
           className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
         >
-          <a
-            href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5"
-          >
-            <svg
-              viewBox="0 0 76 65"
-              className="h-3 w-3"
-              fill="currentColor"
-            >
+          <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+            <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
             </svg>
             Deploy to Vercel
@@ -195,22 +197,22 @@ export function TaskActions({ task }: TaskActionsProps) {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {getPRUrl() && (
-            <DropdownMenuItem onClick={handleOpenPR}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open PR
+          <DropdownMenuContent align="end">
+            {getPRUrl() && (
+              <DropdownMenuItem onClick={handleOpenPR}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open PR
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Try Again
             </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Try Again
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Task
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
@@ -218,9 +220,7 @@ export function TaskActions({ task }: TaskActionsProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Try Again</AlertDialogTitle>
-            <AlertDialogDescription>
-              Create a new task with the same prompt and repository.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Create a new task with the same prompt and repository.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,11 +247,11 @@ export function TaskActions({ task }: TaskActionsProps) {
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS].map((model) => (
+                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
                         {model.label}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>
