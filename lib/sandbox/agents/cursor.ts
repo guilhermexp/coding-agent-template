@@ -4,6 +4,7 @@ import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
 import { LogEntry } from '@/lib/db/schema'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { Writable } from 'stream'
 
 // Helper function to run command and collect logs
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: LogEntry[]) {
@@ -173,10 +174,9 @@ export async function executeCursorInSandbox(sandbox: Sandbox, instruction: stri
     let isCompleted = false
     
     // Create custom writable streams to capture the output
-    const { Writable } = require('stream')
     
     const captureStdout = new Writable({
-      write(chunk: any, encoding: any, callback: any) {
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
         const data = chunk.toString()
         capturedOutput += data
         
@@ -194,7 +194,7 @@ export async function executeCursorInSandbox(sandbox: Sandbox, instruction: stri
     })
     
     const captureStderr = new Writable({
-      write(chunk: any, encoding: any, callback: any) {
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
         capturedError += chunk.toString()
         callback()
       }
@@ -297,10 +297,10 @@ export async function executeCursorInSandbox(sandbox: Sandbox, instruction: stri
         logs,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.message || 'Failed to execute Cursor CLI in sandbox',
+      error: error instanceof Error ? error.message : 'Failed to execute Cursor CLI in sandbox',
       cliName: 'cursor',
       changesDetected: false,
       logs,

@@ -8,6 +8,7 @@ import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { eq, desc, and, or } from 'drizzle-orm'
 import { createInfoLog, createCommandLog, createErrorLog, createSuccessLog } from '@/lib/utils/logging'
 import { createTaskLogger } from '@/lib/utils/task-logger'
+import { Sandbox } from '@vercel/sandbox'
 
 export async function GET() {
   try {
@@ -76,11 +77,11 @@ async function processTaskWithTimeout(taskId: string, prompt: string, repoUrl: s
     
     // Clear the warning timeout if task completes successfully
     clearTimeout(warningTimeout)
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Clear the warning timeout on any error
     clearTimeout(warningTimeout)
     // Handle timeout specifically
-    if (error.message?.includes('timed out after 5 minutes')) {
+    if (error instanceof Error && error.message?.includes('timed out after 5 minutes')) {
       console.error('Task timed out:', taskId)
       
       // Use logger for timeout error
@@ -95,7 +96,7 @@ async function processTaskWithTimeout(taskId: string, prompt: string, repoUrl: s
 }
 
 async function processTask(taskId: string, prompt: string, repoUrl: string, selectedAgent: string = 'claude', selectedModel?: string) {
-  let sandbox: any = null
+  let sandbox: Sandbox | undefined = undefined
   const logger = createTaskLogger(taskId)
 
   try {
@@ -177,7 +178,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
     })
     
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger),
+      executeAgentInSandbox(sandbox!, prompt, selectedAgent as AgentType, logger),
       agentTimeoutPromise
     ])
 
@@ -195,7 +196,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
 
       // Push changes to branch
       const commitMessage = `${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`
-      const pushResult = await pushChangesToBranch(sandbox, branchName!, commitMessage)
+      const pushResult = await pushChangesToBranch(sandbox!, branchName!, commitMessage)
 
       // Append push result logs in real-time
       for (const log of pushResult.logs || []) {
@@ -209,7 +210,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
       }
 
       // Shutdown sandbox
-      const shutdownResult = await shutdownSandbox(sandbox)
+      const shutdownResult = await shutdownSandbox(sandbox!)
       if (shutdownResult.success) {
         await logger.success('Sandbox shutdown completed')
       } else {
@@ -234,7 +235,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
     // Try to shutdown sandbox even on error
     if (sandbox) {
       try {
-        const shutdownResult = await shutdownSandbox(sandbox)
+        const shutdownResult = await shutdownSandbox(sandbox!)
         if (shutdownResult.success) {
           await logger.info('Sandbox shutdown completed after error')
         } else {

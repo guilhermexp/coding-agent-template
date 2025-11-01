@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+interface GitHubRepo {
+  name: string
+  full_name: string
+  description?: string
+  private: boolean
+  clone_url: string
+  updated_at: string
+  language?: string
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!process.env.GITHUB_TOKEN) {
@@ -28,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all repositories by paginating through all pages
-    const allRepos: any[] = []
+    const allRepos: GitHubRepo[] = []
     let page = 1
     const perPage = 100 // GitHub's maximum per page
 
@@ -93,7 +103,7 @@ export async function GET(request: NextRequest) {
     uniqueRepos.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 
     return NextResponse.json(
-      uniqueRepos.map((repo: any) => ({
+      uniqueRepos.map((repo: GitHubRepo) => ({
         name: repo.name,
         full_name: repo.full_name,
         description: repo.description,

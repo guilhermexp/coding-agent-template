@@ -297,8 +297,8 @@ export async function executeOpenCodeInSandbox(sandbox: Sandbox, instruction: st
         logs,
       }
     }
-  } catch (error: any) {
-    const errorMsg = error.message || 'Failed to execute OpenCode in sandbox'
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Failed to execute OpenCode in sandbox'
     console.error('OpenCode execution error:', error)
     
     if (logger) {

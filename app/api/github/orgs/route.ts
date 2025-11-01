@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
 
+interface GitHubOrg {
+  login: string
+  name?: string
+  avatar_url: string
+}
+
 export async function GET() {
   try {
     if (!process.env.GITHUB_TOKEN) {
@@ -20,7 +26,7 @@ export async function GET() {
     const orgs = await response.json()
 
     return NextResponse.json(
-      orgs.map((org: any) => ({
+      orgs.map((org: GitHubOrg) => ({
         login: org.login,
         name: org.name || org.login,
         avatar_url: org.avatar_url,

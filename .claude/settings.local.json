@@ -3,7 +3,11 @@
     "allow": [
       "Bash(node:*)",
       "Bash(npm --version)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel:*)"
     ],
     "deny": [],
     "ask": []

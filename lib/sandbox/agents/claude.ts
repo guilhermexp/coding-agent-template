@@ -179,10 +179,8 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
     }
     
     // Try multiple command formats to see what works
-    let fullCommand: string
-    
     // First try: Simple direct command with permissions flag and verbose output
-    fullCommand = `${envPrefix} claude --dangerously-skip-permissions --verbose "${instruction}"`
+    const fullCommand = `${envPrefix} claude --dangerously-skip-permissions --verbose "${instruction}"`
     
     if (logger) {
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
@@ -279,10 +277,11 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         logs,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to execute Claude CLI in sandbox'
     return {
       success: false,
-      error: error.message || 'Failed to execute Claude CLI in sandbox',
+      error: errorMessage,
       cliName: 'claude',
       changesDetected: false,
       logs,

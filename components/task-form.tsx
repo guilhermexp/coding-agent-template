@@ -500,7 +500,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     )}
                     {filteredRepos.length === 0 && repoFilter ? (
                       <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match "{repoFilter}"
+                        No repositories match &quot;{repoFilter}&quot;
                       </div>
                     ) : (
                       <>
@@ -659,7 +659,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     )}
                     {filteredRepos.length === 0 && repoFilter ? (
                       <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match "{repoFilter}"
+                        No repositories match &quot;{repoFilter}&quot;
                       </div>
                     ) : (
                       <>

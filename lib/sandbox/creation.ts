@@ -87,18 +87,23 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       if (config.onProgress) {
         await config.onProgress(30, 'Sandbox created, installing dependencies...')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Check if this is a timeout error
-      if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT' || error.name === 'TimeoutError') {
+      const errorMessage = error instanceof Error ? error.message : ''
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : undefined
+      const errorName = error instanceof Error ? error.name : undefined
+
+      if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
         logs.push(`Sandbox creation timed out after 5 minutes`)
         logs.push(`This usually happens when the repository is large or has many dependencies`)
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
       
-      logs.push(`Sandbox creation failed: ${error.message}`)
-      if (error.response) {
-        logs.push(`HTTP Status: ${error.response.status}`)
-        logs.push(`Response: ${JSON.stringify(error.response.data)}`)
+      logs.push(`Sandbox creation failed: ${errorMessage}`)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const response = error.response as { status?: number; data?: unknown }
+        if (response.status) logs.push(`HTTP Status: ${response.status}`)
+        if (response.data) logs.push(`Response: ${JSON.stringify(response.data)}`)
       }
       throw error
     }
@@ -321,13 +326,14 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       logs,
       branchName,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sandbox creation error:', error)
-    logs.push(`Error: ${error.message}`)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    logs.push(`Error: ${errorMessage}`)
 
     return {
       success: false,
-      error: error.message || 'Failed to create sandbox',
+      error: errorMessage || 'Failed to create sandbox',
       logs,
     }
   }

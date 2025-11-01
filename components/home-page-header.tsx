@@ -156,7 +156,7 @@ export function HomePageHeader() {
                 <Checkbox 
                   id="delete-completed" 
                   checked={deleteCompleted}
-                  onCheckedChange={setDeleteCompleted}
+                  onCheckedChange={(checked) => setDeleteCompleted(checked === true)}
                 />
                 <label htmlFor="delete-completed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Delete Completed Tasks
@@ -166,7 +166,7 @@ export function HomePageHeader() {
                 <Checkbox 
                   id="delete-failed" 
                   checked={deleteFailed}
-                  onCheckedChange={setDeleteFailed}
+                  onCheckedChange={(checked) => setDeleteFailed(checked === true)}
                 />
                 <label htmlFor="delete-failed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Delete Failed Tasks

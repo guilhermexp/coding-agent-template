@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { getSidebarWidth, setSidebarWidth, getSidebarOpen, setSidebarOpen } from '@/lib/utils/cookies'
+import { createInfoLog } from '@/lib/utils/logging'
 import { nanoid } from 'nanoid'
 
 interface AppLayoutProps {
@@ -179,10 +180,8 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       selectedModel: taskData.selectedModel,
       status: 'pending',
       progress: 0,
-      logs: ['Task created, preparing to start...'],
+      logs: [createInfoLog('Task created, preparing to start...')],
       error: null,
-      description: null,
-      instructions: null,
       branchName: null,
       sandboxUrl: null,
       createdAt: new Date(),

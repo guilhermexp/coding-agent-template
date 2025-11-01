@@ -57,8 +57,9 @@ export async function pushChangesToBranch(
       // Still return success since the work was completed, just couldn't push
       return { success: true, logs, pushFailed: true }
     }
-  } catch (error: any) {
-    logs.push(`Error pushing changes: ${error.message}`)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    logs.push(`Error pushing changes: ${errorMessage}`)
     return { success: false, logs }
   }
 }
@@ -68,7 +69,8 @@ export async function shutdownSandbox(sandbox: Sandbox): Promise<{ success: bool
     // Note: Vercel Sandbox automatically shuts down after timeout
     // No explicit shutdown method available in current SDK
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to shutdown sandbox' }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to shutdown sandbox'
+    return { success: false, error: errorMessage }
   }
 }
