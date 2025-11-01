@@ -1,5 +1,8 @@
 import { Sandbox } from '@vercel/sandbox'
 
+// Project directory where repo is cloned
+export const PROJECT_DIR = '/vercel/sandbox/project'
+
 export interface CommandResult {
   success: boolean
   exitCode?: number
@@ -29,18 +32,18 @@ export async function runCommandInSandbox(
 
     try {
       stdout = await (result.stdout as () => Promise<string>)()
-    } catch (e) {
+    } catch {
       // Failed to read stdout
     }
 
     try {
       stderr = await (result.stderr as () => Promise<string>)()
-    } catch (e) {
+    } catch {
       // Failed to read stderr
     }
 
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-    
+
     return {
       success: result.exitCode === 0,
       exitCode: result.exitCode,
@@ -49,13 +52,27 @@ export async function runCommandInSandbox(
       command: fullCommand,
     }
   } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Command execution failed'
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Command execution failed',
+      error: errorMessage,
       command: fullCommand,
     }
   }
+}
+
+// Helper function to run command in project directory
+export async function runInProject(sandbox: Sandbox, command: string, args: string[] = []): Promise<CommandResult> {
+  // Properly escape arguments for shell execution
+  const escapeArg = (arg: string) => {
+    // Escape single quotes by replacing ' with '\''
+    return `'${arg.replace(/'/g, "'\\''")}'`
+  }
+
+  const fullCommand = args.length > 0 ? `${command} ${args.map(escapeArg).join(' ')}` : command
+  const cdCommand = `cd ${PROJECT_DIR} && ${fullCommand}`
+  return await runCommandInSandbox(sandbox, 'sh', ['-c', cdCommand])
 }
 
 export async function runStreamingCommandInSandbox(
@@ -66,7 +83,7 @@ export async function runStreamingCommandInSandbox(
 ): Promise<CommandResult> {
   try {
     const result = await sandbox.runCommand(command, args)
-    
+
     let stdout = ''
     let stderr = ''
 
@@ -83,7 +100,7 @@ export async function runStreamingCommandInSandbox(
               try {
                 const jsonData = JSON.parse(trimmedLine)
                 options.onJsonLine(jsonData)
-              } catch (e) {
+              } catch {
                 // Not valid JSON, ignore
               }
             }
@@ -93,7 +110,7 @@ export async function runStreamingCommandInSandbox(
           options.onStdout(stdout)
         }
       }
-    } catch (e) {
+    } catch {
       // Failed to read stdout
     }
 
@@ -105,12 +122,12 @@ export async function runStreamingCommandInSandbox(
           options.onStderr(stderr)
         }
       }
-    } catch (e) {
+    } catch {
       // Failed to read stderr
     }
 
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-    
+
     return {
       success: result.exitCode === 0,
       exitCode: result.exitCode,
@@ -119,12 +136,12 @@ export async function runStreamingCommandInSandbox(
       command: fullCommand,
     }
   } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to run streaming command in sandbox'
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to run streaming command in sandbox',
+      error: errorMessage,
       command: fullCommand,
     }
   }
 }
-

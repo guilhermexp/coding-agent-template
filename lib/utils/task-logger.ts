@@ -48,7 +48,7 @@ export class TaskLogger {
         .where(eq(tasks.id, this.taskId))
 
       // Task log: ${type.toUpperCase()}: ${message.substring(0, 100)}
-    } catch (error) {
+    } catch {
       // Failed to append log to database
       // Don't throw - we don't want logging failures to break the main process
     }
@@ -95,17 +95,22 @@ export class TaskLogger {
         .where(eq(tasks.id, this.taskId))
 
       // Task progress: ${progress}%
-    } catch (error) {
+    } catch {
       // Failed to update progress
     }
   }
 
   /**
    * Update task status along with a log message
+   * Note: completedAt is only set when PR is merged, not when status changes to 'completed'
    */
   async updateStatus(status: 'pending' | 'processing' | 'completed' | 'error', message?: string): Promise<void> {
     try {
-      const updates: { status: 'pending' | 'processing' | 'completed' | 'error'; updatedAt: Date; logs?: LogEntry[]; completedAt?: Date } = {
+      const updates: {
+        status: 'pending' | 'processing' | 'completed' | 'error'
+        updatedAt: Date
+        logs?: LogEntry[]
+      } = {
         status,
         updatedAt: new Date(),
       }
@@ -117,17 +122,10 @@ export class TaskLogger {
         updates.logs = [...existingLogs, logEntry]
       }
 
-      if (status === 'completed' || status === 'error') {
-        updates.completedAt = new Date()
-      }
-
-      await db
-        .update(tasks)
-        .set(updates)
-        .where(eq(tasks.id, this.taskId))
+      await db.update(tasks).set(updates).where(eq(tasks.id, this.taskId))
 
       // Task status: ${status}
-    } catch (error) {
+    } catch {
       // Failed to update status
     }
   }
