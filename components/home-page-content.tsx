@@ -36,7 +36,7 @@ export function HomePageContent({
   initialKeepAlive = false,
   maxSandboxDuration = 300,
   user = null,
-  initialStars = 1056,
+  initialStars = 1200,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
@@ -286,8 +286,8 @@ export function HomePageContent({
         />
       </div>
 
-      {/* Mobile Footer with Stars and Deploy Button - Only show when logged in */}
-      {user && <HomePageMobileFooter initialStars={initialStars} />}
+      {/* Mobile Footer with Stars and Deploy Button - Show when logged in OR when owner/repo are selected */}
+      {(user || selectedOwner || selectedRepo) && <HomePageMobileFooter initialStars={initialStars} />}
 
       {/* Sign In Dialog */}
       <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>

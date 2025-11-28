@@ -116,6 +116,9 @@ const AGENT_MODELS = {
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
   ],
   codex: [
+    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
+    { value: 'openai/gpt-5.1-codex', label: 'GPT-5.1-Codex' },
+    { value: 'openai/gpt-5.1-codex-mini', label: 'GPT-5.1-Codex mini' },
     { value: 'openai/gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
@@ -140,6 +143,7 @@ const AGENT_MODELS = {
     { value: 'grok', label: 'Grok' },
   ],
   gemini: [
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
@@ -156,10 +160,10 @@ const AGENT_MODELS = {
 
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
-  codex: 'openai/gpt-5',
+  codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
-  gemini: 'gemini-2.5-pro',
+  gemini: 'gemini-3-pro-preview',
   opencode: 'gpt-5',
 } as const
 
@@ -705,6 +709,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       { value: 'grok', label: 'Grok' },
     ],
     gemini: [
+      { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
       { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
       { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     ],

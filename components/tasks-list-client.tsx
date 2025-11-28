@@ -45,6 +45,9 @@ const AGENT_MODELS = {
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
   ],
   codex: [
+    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
+    { value: 'openai/gpt-5.1-codex', label: 'GPT-5.1-Codex' },
+    { value: 'openai/gpt-5.1-codex-mini', label: 'GPT-5.1-Codex mini' },
     { value: 'openai/gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
@@ -69,6 +72,7 @@ const AGENT_MODELS = {
     { value: 'grok', label: 'Grok' },
   ],
   gemini: [
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
@@ -100,7 +104,7 @@ function getTimeAgo(date: Date): string {
   return new Date(date).toLocaleDateString()
 }
 
-export function TasksListClient({ user, authProvider, initialStars = 1056 }: TasksListClientProps) {
+export function TasksListClient({ user, authProvider, initialStars = 1200 }: TasksListClientProps) {
   const { toggleSidebar, refreshTasks } = useTasks()
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -456,7 +460,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                               )}
                             </div>
                           )}
-                          {task.selectedAgent && <span>•</span>}
+                          {task.selectedAgent && <span>?</span>}
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             <span>{getTimeAgo(task.createdAt)}</span>
